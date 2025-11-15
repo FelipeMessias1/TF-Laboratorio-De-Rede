@@ -172,7 +172,8 @@ try:
      protocolo_app = "HTTP"
      cont_HTTP += 1  
      dados_http = dados_aplicacao.decode("utf-8")
-     app_header = f"Primeira linha: {dados_http.split('\n')[0].strip()}"
+     aux - dados_http.split('\n')[0].strip()
+     app_header = f"Primeira linha: {aux}"
 
     elif porta_origem == 53 or porta_destino == 53: 
      print("O protocolo recebido é DNS:")
