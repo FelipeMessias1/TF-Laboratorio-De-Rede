@@ -55,10 +55,6 @@ def impressao(cont_IPV4, cont_IPV6, cont_TCP, cont_UDP, cont_ICMP4, cont_ICMP6, 
   print("=========================================================")
 
 try:
-# if(len(sys.argv)!=2): #Caso o usuário não passe a interface como argumento
- # print("Argumentos inválidos, use sudo python monitor.py <interface>")
-  #exit()
- #interface = sys.argv[1]  
  interface = "tun0"
  cont_IPV4, cont_IPV6, cont_TCP, cont_UDP, cont_ICMP4, cont_ICMP6, cont_HTTP, cont_HTTPS, cont_DHCP, cont_DNS, cont_NTP = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 #contadores dos protocolos
  socketM = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(0x0003))
@@ -83,20 +79,18 @@ except Exception as e:
  print("Erro ao escrever o cabeçalho do log" + str(e)) 
  exit()
 try:
- while True: #TODO AJUSTAR PARA OLHAR DIRETAMENTE A CAMADA IP!! PULANDO A PARTE DE ETHERNET
+ while True: 
   pacote, addr = socketM.recvfrom(65565) #tamanho máximo do pacote
   hora = time.ctime()
   print("Pacote recebido!")
-  ether_header = pacote[:14]
-  endereço_origem, endereço_destino, ether_type = struct.unpack('! 6s 6s H', ether_header)#Divide o pacote nos seus respectivos dados, primeiros 6 bytes para MAC de origem, próximos 6 para MAC destino e os últimos 2 para o tipo.
-
-  if ether_type ==  0x0800:#IPV4
+  versao_ip = (pacote[0] >> 4) & 0x0F
+  if versao_ip ==  4:#IPV4
    print("O protocolo recebido é IPV4")
-   versao_byte = pacote[14] #pega o primeiro byte do cabeçalho IP, version cujos últimos 4 bits são o ihl, internet header length
+   versao_byte = pacote[0] #pega o primeiro byte do cabeçalho IP, version cujos últimos 4 bits são o ihl, internet header length
    ihl = versao_byte & 0x0F #zera os primeiros 4 bits, que são a versão, e pega o ihl para calcular o tamanho do IP
    tamanho_cabeçalho_ip = ihl * 4 #passando para bytes
-   pacote_ip = pacote[14:14 + tamanho_cabeçalho_ip]#Pega as informações do cabeçalho IP, que são 20 bytes
-   dados_transporte_aplicacao = pacote[14+tamanho_cabeçalho_ip:]#Pega os dados depois do cabeçalho IP, transporte e aplicação
+   pacote_ip = pacote[:tamanho_cabeçalho_ip]#Pega as informações do cabeçalho IP, que são 20 bytes
+   dados_transporte_aplicacao = pacote[tamanho_cabeçalho_ip:]#Pega os dados depois do cabeçalho IP, transporte e aplicação
    cont_IPV4 += 1
    print("Por enquanto foram recebidos " + str(cont_IPV4) +" pacotes IPV4")
    Ip = "IPV4" #B = 1 byte, H = 2 bytes, 4s = 4 bytes string 
@@ -106,11 +100,11 @@ try:
    with open (caminho_log_i, "a") as l: 
     l.write("IPV4, " + hora + ", " + str(protocolo) + ", " + str(endereço_origem) + ", " + str(endereço_destino) + ", " + str(id) + ", " + str(tamanho_total_Ip) + "\n")
 
-  elif ether_type == 0x86DD:#IPV6
+  elif versao_ip == 6:#IPV6
    print("O protocolo recebido é IPV6")
-   pacote_ip = pacote[14:54]#Pega as informações do cabeçalho IP
+   pacote_ip = pacote[:40]#Pega as informações do cabeçalho IP
    tamanho_cabeçalho_ip = 40 #Tamanho do cabeçalho de IPV6 sempre será 40
-   dados_transporte_aplicacao = pacote[54:]
+   dados_transporte_aplicacao = pacote[40:]
    cont_IPV6 += 1
    Ip = "IPV6"
    print("Por enquanto foram recebidos " + str(cont_IPV6) +" pacotes IPV6")
@@ -125,6 +119,8 @@ try:
 
   else: 
    print("O protocolo não é nem IPV4 nem IPV6") 
+   protocolo =0
+   continue 
     
   if protocolo == 1:
    print("O protocolo recebido é ICMP4")
