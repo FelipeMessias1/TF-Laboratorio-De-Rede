@@ -55,7 +55,10 @@ def impressao(cont_IPV4, cont_IPV6, cont_TCP, cont_UDP, cont_ICMP4, cont_ICMP6, 
   print("=========================================================")
 
 try:
- interface = "tun0"
+ if(len(sys.argv)!=2): #Caso o usuário não passe a interface como argumento
+  print("Argumentos inválidos, use sudo python monitor.py <interface>")
+  exit()
+ interface = sys.argv[1]  
  cont_IPV4, cont_IPV6, cont_TCP, cont_UDP, cont_ICMP4, cont_ICMP6, cont_HTTP, cont_HTTPS, cont_DHCP, cont_DNS, cont_NTP = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 #contadores dos protocolos
  socketM = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(0x0003))
  socketM.bind((interface, 0))
@@ -83,24 +86,26 @@ try:
   pacote, addr = socketM.recvfrom(65565) #tamanho máximo do pacote
   hora = time.ctime()
   print("Pacote recebido!")
-  versao_ip = (pacote[0] >> 4) & 0x0F
-  if versao_ip ==  4:#IPV4
+  ether_header = pacote[:14]
+  endereço_origem, endereço_destino, ether_type = struct.unpack('! 6s 6s H', ether_header)#Divide o pacote nos seus respectivos dados, primeiros 6 bytes para MAC de origem, próximos 6 para MAC destino e os últimos 2 para o tipo.
+
+  if ether_type ==  0x0800: #IPV4
    print("O protocolo recebido é IPV4")
-   versao_byte = pacote[0] #pega o primeiro byte do cabeçalho IP, version cujos últimos 4 bits são o ihl, internet header length
+   versao_byte = pacote[14] #pega o primeiro byte do cabeçalho IP (décimo quinto do pacote), version cujos últimos 4 bits são o ihl, internet header length
    ihl = versao_byte & 0x0F #zera os primeiros 4 bits, que são a versão, e pega o ihl para calcular o tamanho do IP
    tamanho_cabeçalho_ip = ihl * 4 #passando para bytes
-   pacote_ip = pacote[:tamanho_cabeçalho_ip]#Pega as informações do cabeçalho IP, que são 20 bytes
-   dados_transporte_aplicacao = pacote[tamanho_cabeçalho_ip:]#Pega os dados depois do cabeçalho IP, transporte e aplicação
+   pacote_ip = pacote[14:14 +tamanho_cabeçalho_ip]#Pega as informações do cabeçalho IP
+   dados_transporte_aplicacao = pacote[14 + tamanho_cabeçalho_ip:]#Pega os dados depois do cabeçalho IP, transporte e aplicação
    cont_IPV4 += 1
    print("Por enquanto foram recebidos " + str(cont_IPV4) +" pacotes IPV4")
    Ip = "IPV4" #B = 1 byte, H = 2 bytes, 4s = 4 bytes string 
-   versao, tos, tamanho_total_Ip, id, offset, ttl, protocolo, checksum, endereço_origem, endereço_destino = struct.unpack('! B B H H H B B H 4s 4s', pacote_ip[:20])#Pega todas informações do cabeçalho IP. O tamanho é o cabeçalho IP + dados IP recebidos
+   versao, tos, tamanho_total_Ip, id, offset, ttl, protocolo, checksum, endereço_origem, endereço_destino = struct.unpack('! B B H H H B B H 4s 4s', pacote_ip[:20])#Pega as informações dos primeiros 20 bytes do cabeçalho IP.
    endereço_origem = socket.inet_ntoa(endereço_origem) # Traduz o endereço de bytes para string padrão(ex 192.168.8.0)
    endereço_destino = socket.inet_ntoa(endereço_destino)
    with open (caminho_log_i, "a") as l: 
     l.write("IPV4, " + hora + ", " + str(protocolo) + ", " + str(endereço_origem) + ", " + str(endereço_destino) + ", " + str(id) + ", " + str(tamanho_total_Ip) + "\n")
 
-  elif versao_ip == 6:#IPV6
+  elif ether_type == 0x86DD:#IPV6
    print("O protocolo recebido é IPV6")
    pacote_ip = pacote[:40]#Pega as informações do cabeçalho IP
    tamanho_cabeçalho_ip = 40 #Tamanho do cabeçalho de IPV6 sempre será 40
@@ -167,9 +172,12 @@ try:
      print("O protocolo recebido é HTTP:")
      protocolo_app = "HTTP"
      cont_HTTP += 1  
-     dados_http = dados_aplicacao.decode("utf-8")
-     aux - dados_http.split('\n')[0].strip()
-     app_header = f"Primeira linha: {aux}"
+     try:
+      dados_http = dados_aplicacao.decode("utf-8") 
+      aux = dados_http.split('\n')[0].strip()
+      app_header = f"Primeira linha: {aux}"
+     except Exception:
+      app_header = "Não foi possível ler o protocolo"  
 
     elif porta_origem == 53 or porta_destino == 53: 
      print("O protocolo recebido é DNS:")
@@ -185,7 +193,7 @@ try:
      print("O protocolo recebido é HTTPS:")
      protocolo_app = "HTTPS"
      cont_HTTPS += 1
-     app_header = f"Dados criptografados"
+     app_header = "Dados criptografados"
 
    if protocolo_app: 
     with open(caminho_log_a, "a") as l:
