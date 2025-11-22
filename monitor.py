@@ -72,6 +72,7 @@ try:#Escreve nos logs quando começa um novo monitoramento(inicia o programa)
  with open(caminho_log_i, "a") as l:
   l.write(inicio)
   l.write("Nome do Protocolo, Data, Número do Protocolo, IP de Origem, IP de Destino, Id, Tamanho, Dados do Cabeçalho(Se for ICMP) \n")
+ # l.close
  with open(caminho_log_t, "a") as l:
   l.write(inicio)
   l.write("Nome do Protocolo, Data, Número do Protocolo, IP de Origem, Porta de Origem, IP de Destino, Porta de Destino, Tamanho,\n")
@@ -151,7 +152,7 @@ try:
   elif protocolo == 6:
    print("O protocolo recebido é TCP:") 
    cont_TCP += 1
-   header_tcp = dados_transporte_aplicacao[:20]#Pega apenas o cabeçalho TCP, excluindo os dados da camada de aplicação. ASSUME QUE É 20 bytes!
+   header_tcp = dados_transporte_aplicacao[:20]#Pega apenas o cabeçalho TCP, excluindo os dados da camada de aplicação. 
    if(len(dados_transporte_aplicacao) < 20):
     print("Erro ao receber pacote TCP, cabeçalho + dados de aplicação é menor que 20 bytes. Ignorando-o ...")
     continue
